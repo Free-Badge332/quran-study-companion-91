@@ -31,6 +31,13 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
     private int accuracy = SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM;
     private long lastEmit = 0;
 
+    /** Best fused heading source: rotation vector, else the geomagnetic one (no gyro needed). */
+    private Sensor rotationSensor() {
+        if (sm == null) return null;
+        Sensor s = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        return s != null ? s : sm.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
+    }
+
     @Override
     public void load() {
         sm = (SensorManager) getContext().getSystemService(Context.SENSOR_SERVICE);
@@ -39,7 +46,7 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
     @PluginMethod
     public void isAvailable(PluginCall call) {
         JSObject r = new JSObject();
-        r.put("available", sm != null && (sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null
+        r.put("available", sm != null && (rotationSensor() != null
                 || sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null));
         call.resolve(r);
     }
@@ -48,7 +55,7 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
     public void start(PluginCall call) {
         if (sm == null) { call.reject("No sensor service"); return; }
         if (!running) {
-            Sensor rv = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            Sensor rv = rotationSensor();
             Sensor m = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
             if (rv != null) {
                 sm.registerListener(this, rv, SensorManager.SENSOR_DELAY_UI);
@@ -79,7 +86,7 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
     protected void handleOnResume() {
         if (!running || sm == null) return;
         running = false;
-        Sensor rv = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        Sensor rv = rotationSensor();
         Sensor m = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         Sensor a = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (rv != null) sm.registerListener(this, rv, SensorManager.SENSOR_DELAY_UI);
@@ -97,7 +104,7 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
     public void onSensorChanged(SensorEvent e) {
         int type = e.sensor.getType();
         boolean haveRot = false;
-        if (type == Sensor.TYPE_ROTATION_VECTOR) {
+        if (type == Sensor.TYPE_ROTATION_VECTOR || type == Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR) {
             SensorManager.getRotationMatrixFromVector(rot, e.values);
             haveRot = true;
         } else if (type == Sensor.TYPE_ACCELEROMETER) {
@@ -107,7 +114,7 @@ public class CompassPlugin extends Plugin implements SensorEventListener {
             mag = e.values.clone();
         }
         if (!haveRot) {
-            if (sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null) return;
+            if (rotationSensor() != null) return;
             if (grav == null || mag == null) return;
             if (!SensorManager.getRotationMatrix(rot, null, grav, mag)) return;
         }

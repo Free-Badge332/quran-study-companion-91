@@ -424,37 +424,77 @@ html.native body { padding-inline: 0; }
   top: calc(var(--header-height) + var(--safe-top) + 0.5rem);
 }
 
-/* Navigation drawer: text-only, calm rows with a slim active marker. */
-@utility drawer-link {
-  position: relative;
+/* Navigation drawer: phone-first, Material 3 inspired, in the cream + emerald identity. */
+@utility drawer-header {
   display: flex;
-  min-height: 2.75rem;
   align-items: center;
-  border-radius: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.85rem;
+  padding: calc(1.1rem + var(--safe-top, 0px)) 1rem 1rem 1.25rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 6%, var(--color-background)), var(--color-background));
+}
+@utility drawer-close {
+  display: grid;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--color-muted-foreground);
+  transition: background-color 160ms ease, color 160ms ease;
+  &:hover, &:active { background-color: var(--color-secondary); color: var(--color-foreground); }
+  &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+}
+@utility drawer-section-title {
+  padding: 0.35rem 0.9rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+@utility drawer-icon {
+  display: grid;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.8rem;
+  background-color: color-mix(in oklab, var(--color-primary) 7%, var(--color-card));
+  color: var(--color-primary);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+@utility drawer-link {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem 0.4rem 0.5rem;
   font-size: 0.95rem;
   font-weight: 500;
   color: var(--color-foreground);
-  transition: background-color 160ms ease, color 160ms ease, padding 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 160ms ease, color 160ms ease, transform 120ms ease;
   &:hover { background-color: var(--color-muted); }
+  &:active { transform: scale(0.985); background-color: var(--color-secondary); }
   &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
 }
 @utility drawer-link-active {
-  background-color: color-mix(in oklab, var(--color-primary) 9%, transparent);
+  background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
   font-weight: 600;
-  padding-left: 1.1rem;
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0.4rem;
-    top: 50%;
-    height: 1.1rem;
-    width: 3px;
-    transform: translateY(-50%);
-    border-radius: 999px;
-    background-color: var(--color-primary);
-  }
+  & .drawer-icon { background-color: var(--color-primary); color: var(--color-primary-foreground); }
+}
+@utility drawer-lang {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background-color: var(--color-card);
+  padding: 0.3rem 0.9rem 0.3rem 0.5rem;
+  &:focus-within { outline: 2px solid var(--color-ring); outline-offset: 1px; }
 }
 
 @utility no-scrollbar {

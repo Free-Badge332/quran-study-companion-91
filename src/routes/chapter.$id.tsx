@@ -219,6 +219,7 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
   const currentVerse = useRef<number | null>(null);
   const interruptedVerse = useRef<number | null>(null);
   const userPause = useRef(false);
+  const startingVerse = useRef<number | null>(null);
   const playingRef = useRef<number | null>(null);
   playingRef.current = playing;
   const reciterName = READERS.find(r => r.id === reader)?.name ?? reader;
@@ -254,6 +255,8 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
 
   const pauseNow = () => {
     request.current++;
+    startingVerse.current = null;
+    playingRef.current = null;
     userPause.current = true;
     interrupted.current = null;
     audio.current?.pause();
@@ -332,7 +335,11 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
   };
 
   const play = async (vid: number, count = 1, restart = false, resumeAt?: number) => {
-    if (count === 1 && playing === vid && !restart) { pauseNow(); return; }
+    // Use the ref, not render state: rapid taps on Android must see the live value.
+    if (count === 1 && playingRef.current === vid && !restart) { pauseNow(); return; }
+    // Same verse already starting: ignore repeat taps so it never starts twice.
+    if (count === 1 && resumeAt === undefined && startingVerse.current === vid) return;
+    startingVerse.current = vid;
     const token = ++request.current;
     userPause.current = false;
     interrupted.current = null;
@@ -355,7 +362,7 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
         release.current = recording.release;
         a = new Audio(recording.url);
       } catch (error) {
-        if (token === request.current) { setLoading(false); setPlaying(null); setAudioError(error instanceof Error ? error.message : t("audioRetry")); }
+        if (token === request.current) { startingVerse.current = null; setLoading(false); setPlaying(null); setAudioError(error instanceof Error ? error.message : t("audioRetry")); }
         return;
       }
     }
@@ -421,7 +428,9 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
       if (resumeAt !== undefined) a.currentTime = resumeAt;
       await a.play();
       setLoading(false);
+      if (token === request.current || startingVerse.current === vid) startingVerse.current = null;
       if (token !== request.current) { a.pause(); return; }
+      playingRef.current = vid;
       setPlaying(vid);
       sleepTimer.playbackResumed();
       markVerseRead(chapter.id, vid);
@@ -441,7 +450,7 @@ function Learning({ chapter, size, leading, translationSize, reader, q, speed, r
         if (el) el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
       }
     } catch (error) {
-      if (token === request.current) { setLoading(false); setPlaying(null); setAudioError(error instanceof Error ? error.message : t("audioRetry")); }
+      if (token === request.current) { startingVerse.current = null; setLoading(false); setPlaying(null); setAudioError(error instanceof Error ? error.message : t("audioRetry")); }
     }
   };
 

@@ -39,6 +39,7 @@ function useHeading() {
   const samples = useRef<number[]>([]);
   const last = useRef<number | null>(null);
   const [unstable, setUnstable] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   // Android app: read the phone's compass directly. WebViews often never send
   // absolute orientation events, which wrongly showed "No compass sensor found".
@@ -62,7 +63,7 @@ function useHeading() {
         setNative(true);
         setState("waiting");
         // If the sensor never reports, fall back to the WebView's orientation events.
-        fallback = window.setTimeout(() => { if (!cancelled && last.current == null) { void compass?.stop().catch(() => {}); setNative(false); } }, 4000);
+        fallback = window.setTimeout(() => { if (!cancelled && last.current == null) { void compass?.stop().catch(() => {}); setNative(false); } }, 6000);
         handle = await compass.addListener("heading", ({ heading: h, accuracy }) => {
           last.current = smoothHeading(last.current, h);
           setHeading(last.current);
@@ -81,7 +82,7 @@ function useHeading() {
       void handle?.remove();
       void compass?.stop().catch(() => {});
     };
-  }, []);
+  }, [retry]);
 
   useEffect(() => {
     if (native !== false) return;
@@ -115,13 +116,21 @@ function useHeading() {
     };
     window.addEventListener("deviceorientationabsolute", onEvt);
     window.addEventListener("deviceorientation", onEvt);
-    const t = window.setTimeout(() => { if (last.current == null) setState("unavailable"); }, 2500);
+    const t = window.setTimeout(() => { if (last.current == null) setState("unavailable"); }, 5000);
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("deviceorientationabsolute", onEvt);
       window.removeEventListener("deviceorientation", onEvt);
     };
   }, [active]);
+
+  // Back from background with no reading yet: try the sensors again instead of staying "unavailable".
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "visible" && last.current == null) setRetry((n) => n + 1); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  useEffect(() => { if (retry) { setActive(false); setNative(null); setState("waiting"); } }, [retry]);
 
   const request = async () => {
     const D = (window as unknown as { DeviceOrientationEvent: { requestPermission: () => Promise<string> } }).DeviceOrientationEvent;
@@ -225,7 +234,7 @@ function QiblaPage() {
       <p className={`mt-5 text-center font-medium transition-colors ${aligned ? "text-primary" : "text-foreground"}`} aria-live="polite">
         {state === "needs-permission" ? "Allow compass access to see live direction."
           : state === "waiting" ? "Starting compass…"
-          : !live ? "No compass sensor found. Face the bearing below using a separate compass."
+          : !live ? "This phone is not giving a compass reading. Face the Qibla bearing below using a separate compass."
           : aligned ? "You are facing the Qibla"
           : `Turn ${offBy! > 0 ? "right" : "left"} ${Math.abs(Math.round(offBy!))}°`}
       </p>

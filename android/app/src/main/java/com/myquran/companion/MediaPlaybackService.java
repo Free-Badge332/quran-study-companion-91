@@ -108,7 +108,12 @@ public class MediaPlaybackService extends Service {
         long position = intent != null ? (long) (intent.getDoubleExtra("position", 0) * 1000) : 0;
         long duration = intent != null ? (long) (intent.getDoubleExtra("duration", 0) * 1000) : 0;
 
-        if (playing) { requestFocus(); pausedByFocusLoss = false; }
+        // Do NOT request audio focus here: the WebView's own media player already
+        // holds it. Requesting it again made Android take focus away from the
+        // WebView, which paused the verse and then fired a competing "play"/
+        // "pause" from this listener (stops + duplicate playback). Calls and other
+        // apps still interrupt the WebView player, which the page handles itself.
+        pausedByFocusLoss = false;
 
         session.setMetadata(new MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
